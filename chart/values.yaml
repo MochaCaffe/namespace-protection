@@ -1,0 +1,15 @@
+replicaCount: 1
+namespace: vcluster-gatekeeper
+
+image:
+  repository: harbor.kosmosk8s.kosmos.fr/it/vcluster-gatekeeper
+  pullPolicy: Always
+  tag: v1.0.0
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
