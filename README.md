@@ -9,7 +9,7 @@ The Helm Chart deploys a Validating Webhook that listens to delete operations on
 
 The webhook cancels the deletion operation on the namespace when the **protect-deletion** annotation is set to True. This results in the following error:
 ```
-Error from server: admission webhook "namespace-protection.kube-system.svc.cluster.local" denied the request: This namespace is protected against delete operations
+Error from server: admission webhook "namespace-protection.kube-system.svc.cluster.local" denied the request: This namespace is protected against deletion
 ```
 
 ## Install

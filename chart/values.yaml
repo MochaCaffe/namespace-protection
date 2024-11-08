@@ -6,7 +6,7 @@ image:
   tag: v1.0.0
 
 webhook:
-  rejectionMessage: "This namespace is protected against delete operations"
+  rejectionMessage: "This namespace is protected against deletion"
   annotationName: "protect-deletion"
 
 resources: {}
