@@ -1,4 +1,4 @@
-module vcluster-gatekeeper
+module namespace-protection
 
 go 1.22.0
 

@@ -6,14 +6,14 @@ import (
 	api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	meta "k8s.io/client-go/applyconfigurations/meta/v1"
+	"namespace-protection/cert"
 
 	"k8s.io/client-go/kubernetes"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"vcluster-gatekeeper/cert"
 )
 
-func ApplyValidationConfig(crt *cert.Certificate) {
+func ApplyValidationConfig(c *cert.Certificate) {
 
 	var (
 		webhookNamespace, _ = os.LookupEnv("WEBHOOK_NAMESPACE")
@@ -47,7 +47,7 @@ func ApplyValidationConfig(crt *cert.Certificate) {
 			AdmissionReviewVersions: []string{"v1"},
 			SideEffects:             &sideEffect,
 			ClientConfig: &v1.WebhookClientConfigApplyConfiguration{
-				CABundle: crt.CaCert.Bytes(), // CA bundle created earlier
+				CABundle: c.CA.Bytes(), // CA bundle created earlier
 				Service: &v1.ServiceReferenceApplyConfiguration{
 					Name:      &webhookService,
 					Namespace: &webhookNamespace,
@@ -69,7 +69,7 @@ func ApplyValidationConfig(crt *cert.Certificate) {
 
 	if _, err := kubeClient.AdmissionregistrationV1().ValidatingWebhookConfigurations().Apply(context.Background(),
 		validateConfig,
-		api.ApplyOptions{FieldManager: "vcluster-gatekeeper", Force: true}); err != nil {
+		api.ApplyOptions{FieldManager: "namespace-protection", Force: true}); err != nil {
 		panic(err)
 	}
 }

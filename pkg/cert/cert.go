@@ -15,18 +15,20 @@ import (
 )
 
 type Certificate struct {
-	ServerCert       *bytes.Buffer
-	CaCert           *bytes.Buffer
-	ServerPrivateKey *bytes.Buffer
+	Cert       *bytes.Buffer
+	CA         *bytes.Buffer
+	PrivateKey *bytes.Buffer
 }
 
-func GenCert() (*Certificate, error) {
-	crt := Certificate{}
+/*
+Store a self-signed certificate into Certificate.
+*/
+func (c *Certificate) GenerateSelfSigned() error {
 	// CA config
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2020),
 		Subject: pkix.Name{
-			Organization: []string{"vcluster.io"},
+			Organization: []string{"Kubernetes"},
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(1, 0, 0),
@@ -40,20 +42,20 @@ func GenCert() (*Certificate, error) {
 	caPrivKey, err := rsa.GenerateKey(cryptorand.Reader, 4096)
 	if err != nil {
 		fmt.Println(err)
-		return nil, err
+		return err
 	}
 
 	// Self signed CA certificate
 	caBytes, err := x509.CreateCertificate(cryptorand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
 	if err != nil {
 		fmt.Println(err)
-		return nil, err
+		return err
 
 	}
 
 	// PEM encode CA cert
-	crt.CaCert = new(bytes.Buffer)
-	_ = pem.Encode(crt.CaCert, &pem.Block{
+	c.CA = new(bytes.Buffer)
+	_ = pem.Encode(c.CA, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: caBytes,
 	})
@@ -72,7 +74,7 @@ func GenCert() (*Certificate, error) {
 		SerialNumber: big.NewInt(1658),
 		Subject: pkix.Name{
 			CommonName:   commonName,
-			Organization: []string{"vcluster.io"},
+			Organization: []string{"Kubernetes"},
 		},
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(1, 0, 0),
@@ -85,7 +87,7 @@ func GenCert() (*Certificate, error) {
 	serverPrivKey, err := rsa.GenerateKey(cryptorand.Reader, 4096)
 	if err != nil {
 		fmt.Println(err)
-		return nil, err
+		return err
 
 	}
 
@@ -93,33 +95,33 @@ func GenCert() (*Certificate, error) {
 	serverCertBytes, err := x509.CreateCertificate(cryptorand.Reader, cert, ca, &serverPrivKey.PublicKey, caPrivKey)
 	if err != nil {
 		fmt.Println(err)
-		return nil, err
+		return err
 
 	}
 
 	// PEM encode the  server cert and key
-	crt.ServerCert = new(bytes.Buffer)
-	_ = pem.Encode(crt.ServerCert, &pem.Block{
+	c.Cert = new(bytes.Buffer)
+	_ = pem.Encode(c.Cert, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: serverCertBytes,
 	})
 
-	crt.ServerPrivateKey = new(bytes.Buffer)
-	_ = pem.Encode(crt.ServerPrivateKey, &pem.Block{
+	c.PrivateKey = new(bytes.Buffer)
+	_ = pem.Encode(c.PrivateKey, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(serverPrivKey),
 	})
 
-	return &crt, nil
+	return nil
 }
 
-func (c *Certificate) SaveCert(dirPath string) {
-	err := writeFile(dirPath+"/tls.crt", c.ServerCert)
+func (c *Certificate) SaveCertToPath(dirPath string) {
+	err := writeFile(dirPath+"/tls.crt", c.Cert)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	err = writeFile(dirPath+"/tls.key", c.ServerPrivateKey)
+	err = writeFile(dirPath+"/tls.key", c.PrivateKey)
 	if err != nil {
 		log.Panic(err)
 	}

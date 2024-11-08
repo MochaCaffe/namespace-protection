@@ -1,15 +1,15 @@
 replicaCount: 1
-namespace: vcluster-gatekeeper
 
 image:
-  repository: harbor.kosmosk8s.kosmos.fr/it/vcluster-gatekeeper
+  repository: mochacoffee/namespace-protection
   pullPolicy: Always
   tag: v1.0.0
 
+webhook:
+  rejectionMessage: "This namespace is protected against delete operations"
+  annotationName: "protect-deletion"
+
 resources: {}
-
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}

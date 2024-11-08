@@ -2,19 +2,18 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
+	"namespace-protection/cert"
+	"namespace-protection/webhook"
 	"net/http"
 	"os"
-	"vcluster-gatekeeper/cert"
-	"vcluster-gatekeeper/webhook"
 )
 
 const (
-	// InvalidMessage will be return to the user.
-	InvalidMessage = "This namespace contains a Vcluster instance that cannot be destroyed"
-	port           = ":8443"
+	port = ":8443"
 )
 
 // Namespace struct for parsing
@@ -24,12 +23,8 @@ type Namespace struct {
 
 // Metadata struct for parsing
 type Metadata struct {
-	Name        string      `json:"name"`
-	Annotations Annotations `json:"annotations"`
-}
-
-type Annotations struct {
-	Protection string `json:"vClusterProtection"`
+	Name        string            `json:"name"`
+	Annotations map[string]string `json:"annotations"`
 }
 
 func (m Metadata) isEmpty() bool {
@@ -38,7 +33,6 @@ func (m Metadata) isEmpty() bool {
 
 // Validate handler accepts or rejects based on request contents
 func Validate(w http.ResponseWriter, r *http.Request) {
-	log.Println("Validating request")
 	arReview := &admissionv1.AdmissionReview{}
 	if err := json.NewDecoder(r.Body).Decode(&arReview); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -54,7 +48,7 @@ func Validate(w http.ResponseWriter, r *http.Request) {
 
 	ns := Namespace{
 		Metadata: Metadata{
-			Annotations: Annotations{},
+			Annotations: map[string]string{},
 		},
 	}
 	if err := json.Unmarshal(raw, &ns); err != nil {
@@ -75,38 +69,46 @@ func Validate(w http.ResponseWriter, r *http.Request) {
 		Allowed: true,
 	}
 
-	if ns.Metadata.Annotations.Protection == "true" {
+	rejectionMessage, _ := os.LookupEnv("WEBHOOK_REJECTION_MESSAGE")
+	progtectionAnnotation, _ := os.LookupEnv("WEBHOOK_ANNOTATION")
+	if ns.Metadata.Annotations[progtectionAnnotation] == "true" {
 		arReview.Response.Allowed = false
 		arReview.Response.Result = &metav1.Status{
-			Message: InvalidMessage,
+			Message: rejectionMessage,
 		}
-		log.Println(ns.Metadata.Name + ": request refused")
+		log.Println("Delete request refused for namespace " + ns.Metadata.Name)
 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(&arReview)
-	log.Println("Request validated")
+	log.Println("Delete request validated for namespace " + ns.Metadata.Name)
 
 }
 
 func main() {
-	crt, err := cert.GenCert()
+	serverCert := cert.Certificate{}
+	err := serverCert.GenerateSelfSigned()
 	if err != nil {
 		log.Fatal(err)
 	}
-	crt.SaveCert("/etc/tls")
+	serverCert.SaveCertToPath("/etc/tls")
 
-	_, found := os.LookupEnv("WEBHOOK_SERVICE")
-	if !found {
-		log.Panic("WEBHOOK_SERVICE environment variable not set")
-	}
+	err = checkEnvVars([]string{"WEBHOOK_SERVICE", "WEBHOOK_NAMESPACE", "WEBHOOK_REJECTION_MESSAGE", "WEBHOOK_ANNOTATION"})
 
-	_, found = os.LookupEnv("WEBHOOK_NAMESPACE")
-	if !found {
-		log.Panic("WEBHOOK_NAMESPACE environment variable not set")
+	if err != nil {
+		log.Panic(err)
 	}
-	webhook.ApplyValidationConfig(crt)
+	webhook.ApplyValidationConfig(&serverCert)
 	http.HandleFunc("/validate", Validate)
 	log.Fatal(http.ListenAndServeTLS(port, "/etc/tls/tls.crt", "/etc/tls/tls.key", nil))
+}
+
+func checkEnvVars(env []string) error {
+	for _, envVar := range env {
+		if _, found := os.LookupEnv(envVar); !found {
+			return errors.New(envVar + "environment variable not set")
+		}
+	}
+	return nil
 }

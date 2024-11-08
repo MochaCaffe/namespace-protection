@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Chart.Name }}
-  namespace: {{ required "A valid .Values.namespace is required!" .Values.namespace }}
+  namespace: kube-system
   labels:
-    {{- include "nsvalidator.labels" . | nindent 4 }}
+    {{- include "nsprotection.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "nsvalidator.selectorLabels" . | nindent 6 }}
+      {{- include "nsprotection.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "nsvalidator.selectorLabels" . | nindent 8 }}
+        {{- include "nsprotection.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: "{{ .Chart.Name }}-sa"
+      serviceAccountName: "{{ .Chart.Name }}"
       imagePullSecrets:
         - name: harbor
       containers:
@@ -25,6 +25,10 @@ spec:
               value: {{.Release.Name}}
             - name: WEBHOOK_NAMESPACE
               value: {{.Release.Namespace}}
+            - name: WEBHOOK_REJECTION_MESSAGE
+              value: {{.Values.webhook.rejectionMessage}}
+            - name: WEBHOOK_ANNOTATION
+              value: {{.Values.webhook.annotationName}}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:

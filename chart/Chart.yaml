@@ -1,6 +1,6 @@
 apiVersion: v2
-name: namespace-deletion
-description: A Helm chart for sample Validating webhook.
+name: namespace-protection
+description: A Helm chart to prevent accidental deletion of a namespace and its resources.
 type: application
-version: 0.0.1
-appVersion: 0.0.1
+version: 1.0.0
+appVersion: 1.0.0
